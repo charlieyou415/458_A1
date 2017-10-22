@@ -88,7 +88,7 @@ void sr_handlepacket(struct sr_instance* sr,
   
   /*printf("interface: %s", interface);*/
   uint16_t ether_type = ethertype(packet);
-  sr_if* packet_if = sr_get_interface(sr, interface); 
+  
  /* Determine the type of frame */
   if (ether_type == ethertype_arp){
 	/* ARP packet */
@@ -96,14 +96,18 @@ void sr_handlepacket(struct sr_instance* sr,
 	sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)((unsigned char *)packet + sizeof(sr_ethernet_hdr_t));
 	unsigned short ar_op = ntohs(arp_hdr->ar_op);
 	
-	sr_if *sr_if_con = sr_get_interface(sr, interface);
+	struct sr_if *sr_if_con = sr_get_interface(sr, interface);
 
-	uint32_t ip = sr_if_con->ip;
-	printf("Connected IF IP: %d \n", ip);
+	uint32_t ip = ntohl(sr_if_con->ip);
+	printf("Connected IF IP: %x \n", ip);
+	printf("Connected IF Name: %s \n", sr_if_con->name);
+	printf("Connected IF addr: %s \n", sr_if_con->addr);
 	
 	/* Determine if ARP req or reply */
 	if (ar_op == arp_op_request){
 	 	printf("ARP Req \n");
+		printf("ARP sip: %x \n", ntohl(arp_hdr->ar_sip));
+		printf("ARP tip: %x \n", ntohl(arp_hdr->ar_tip));
 	} else if (ar_op == arp_op_reply){
 		printf("ARP Reply \n");
 	}
@@ -117,4 +121,10 @@ void sr_handlepacket(struct sr_instance* sr,
   /* fill in code here */
 
 }/* end sr_ForwardPacket */
+
+/* Handle ARP request helper */
+void sr_handle_arp_req(sr_arp_hdr_t *arp_hdr, struct sr_if *sr_if)
+{
+
+}
 
