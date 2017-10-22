@@ -13,14 +13,19 @@
 
 #include <stdio.h>
 #include <assert.h>
-
-
+#include <stdlib.h>
+#include <string.h>
 #include "sr_if.h"
 #include "sr_rt.h"
 #include "sr_router.h"
 #include "sr_protocol.h"
 #include "sr_arpcache.h"
 #include "sr_utils.h"
+
+
+void sr_fill_ether_reply(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *ether_hdr_reply, struct sr_if *sr_if_con);
+
+void sr_fill_arp_reply(sr_arp_hdr_t *arp_hdr,sr_arp_hdr_t *arp_hdr_reply, struct sr_if *sr_if_con);
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -93,7 +98,8 @@ void sr_handlepacket(struct sr_instance* sr,
   if (ether_type == ethertype_arp){
 	/* ARP packet */
 	printf("ARP Packet \n");
-	sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)((unsigned char *)packet + sizeof(sr_ethernet_hdr_t));
+	sr_ethernet_hdr_t *ether_hdr = (sr_ethernet_hdr_t *) packet;
+	sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
 	unsigned short ar_op = ntohs(arp_hdr->ar_op);
 	
 	struct sr_if *sr_if_con = sr_get_interface(sr, interface);
@@ -108,6 +114,19 @@ void sr_handlepacket(struct sr_instance* sr,
 	 	printf("ARP Req \n");
 		printf("ARP sip: %x \n", ntohl(arp_hdr->ar_sip));
 		printf("ARP tip: %x \n", ntohl(arp_hdr->ar_tip));
+
+		/* Create a new ethernet header */
+		struct sr_ethernet_hdr *ether_hdr_reply = (struct sr_ethernet_hdr *) malloc(sizeof(sr_ethernet_hdr_t));
+		sr_fill_ether_reply(ether_hdr, ether_hdr_reply, sr_if_con);
+
+		/* Create a new arp packet */
+		struct sr_arp_hdr *arp_hdr_reply = (sr_arp_hdr_t *) malloc(sizeof(sr_arp_hdr_t));
+		sr_fill_arp_reply(arp_hdr, arp_hdr_reply, sr_if_con); 
+
+
+
+
+
 	} else if (ar_op == arp_op_reply){
 		printf("ARP Reply \n");
 	}
@@ -122,9 +141,31 @@ void sr_handlepacket(struct sr_instance* sr,
 
 }/* end sr_ForwardPacket */
 
-/* Handle ARP request helper */
-void sr_handle_arp_req(sr_arp_hdr_t *arp_hdr, struct sr_if *sr_if)
-{
 
+
+/* Handle ARP request helpers */
+void sr_fill_ether_reply(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *ether_hdr_reply, struct sr_if *sr_if_con)
+{
+  memcpy(ether_hdr_reply->ether_dhost, ether_hdr->ether_shost, ETHER_ADDR_LEN);
+  memcpy(ether_hdr_reply->ether_shost, sr_if_con->addr, ETHER_ADDR_LEN);
+  ether_hdr_reply->ether_type = ethertype_arp;
 }
 
+void sr_fill_arp_reply(sr_arp_hdr_t *arp_hdr,sr_arp_hdr_t *arp_hdr_reply, struct sr_if *sr_if_con)
+{
+  /* Need to construct a new arp hdr */
+  arp_hdr_reply->ar_hrd = arp_hdr->ar_hrd;
+  arp_hdr_reply->ar_pro = arp_hdr->ar_pro;
+  arp_hdr_reply->ar_hln = arp_hdr->ar_hln;
+  arp_hdr_reply->ar_pln = arp_hdr->ar_pln;
+  /* Change op_code to reply */
+  arp_hdr_reply->ar_op = htons(arp_op_reply);
+  /* Copy the router's interface address as sender's address */
+  memcpy(arp_hdr_reply->ar_sha, sr_if_con->addr, ETHER_ADDR_LEN);
+  /* Copy the router's interface ip as sender's ip */ 
+  arp_hdr_reply->ar_sip = sr_if_con->ip;
+  /* Copy the old sender hw address as target hw addr */
+  memcpy(arp_hdr_reply->ar_tha, arp_hdr->ar_sha, ETHER_ADDR_LEN);
+  /* copy the old sender ip as target ip */
+  arp_hdr_reply->ar_tip = arp_hdr->ar_sip;
+}
