@@ -22,6 +22,7 @@
 #include "sr_arpcache.h"
 #include "sr_utils.h"
 
+struct sr_if* find_tip_in_router(struct sr_instance *sr, uint32_t tip);
 
 void sr_fill_ether_reply(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *ether_hdr_reply, struct sr_if *sr_if_con);
 
@@ -105,9 +106,9 @@ void sr_handlepacket(struct sr_instance* sr,
 	struct sr_if *sr_if_con = sr_get_interface(sr, interface);
 
 	uint32_t ip = ntohl(sr_if_con->ip);
-	printf("Connected IF IP: %x \n", ip);
-	printf("Connected IF Name: %s \n", sr_if_con->name);
-	printf("Connected IF addr: %s \n", sr_if_con->addr);
+	printf("Incoming IF IP: %x \n", ip);
+	printf("Incoming IF Name: %s \n", sr_if_con->name);
+	printf("Incoming IF addr: %s \n", sr_if_con->addr);
 	
 	/* Determine if ARP req or reply */
 	if (ar_op == arp_op_request){
@@ -115,14 +116,55 @@ void sr_handlepacket(struct sr_instance* sr,
 		printf("ARP sip: %x \n", ntohl(arp_hdr->ar_sip));
 		printf("ARP tip: %x \n", ntohl(arp_hdr->ar_tip));
 
-		/* Create a new ethernet header */
+		/* Find the interface matching with the ARP tip */
+		struct sr_if* target_if = find_tip_in_router(sr, arp_hdr->ar_tip);
+		/* Initialize a new ethernet header */
 		struct sr_ethernet_hdr *ether_hdr_reply = (struct sr_ethernet_hdr *) malloc(sizeof(sr_ethernet_hdr_t));
-		sr_fill_ether_reply(ether_hdr, ether_hdr_reply, sr_if_con);
-
-		/* Create a new arp packet */
+		/* Initialize a new arp header/packet */
 		struct sr_arp_hdr *arp_hdr_reply = (sr_arp_hdr_t *) malloc(sizeof(sr_arp_hdr_t));
-		sr_fill_arp_reply(arp_hdr, arp_hdr_reply, sr_if_con); 
+		/* Initialize a new PACKET, to hold ether_hdr + arp_packet */
+		uint8_t * reply_packet = malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));		
 
+
+
+		if(target_if){
+		  /* The requested tip is one of the router's interfaces, REPLY */
+			/* Create a new ethernet header */
+                	sr_fill_ether_reply(ether_hdr, ether_hdr_reply, target_if);
+
+                	/* Create a new arp packet */
+                	sr_fill_arp_reply(arp_hdr, arp_hdr_reply, target_if);
+
+                	/* Put the new ethernet hdr + arp packet together */
+                	memcpy(reply_packet, ether_hdr_reply, sizeof(sr_ethernet_hdr_t));
+                	memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), arp_hdr_reply, sizeof(sr_arp_hdr_t));
+
+                	/* Send the packet back */
+                	sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), target_if->name);
+		} else {
+		  /* The requested tip is not one of the router's interfaces, BROADCAST */
+			struct sr_if* if_walker = 0;
+			if_walker = sr->if_list;
+			while(if_walker)
+			{
+				if(!strncmp(if_walker->name, interface, sr_IFACE_NAMELEN))
+				{
+					sr_fill_ether_reply(ether_hdr, ether_hdr_reply, if_walker);
+					sr_fill_arp_reply(arp_hdr, arp_hdr_reply, if_walker);
+					memcpy(reply_packet, ether_hdr_reply, sizeof(sr_ethernet_hdr_t));
+					memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), arp_hdr_reply, sizeof(sr_arp_hdr_t));
+					sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), if_walker->name);
+				}
+			}
+			
+		}
+		
+		
+		
+	
+		free(ether_hdr_reply);
+		free(arp_hdr_reply);
+		free(reply_packet);
 
 
 
@@ -144,11 +186,30 @@ void sr_handlepacket(struct sr_instance* sr,
 
 
 /* Handle ARP request helpers */
+struct sr_if* find_tip_in_router(struct sr_instance *sr, uint32_t tip)
+{
+	struct sr_if* if_walker = 0;
+	assert(sr);
+	assert(tip);
+	
+	if_walker = sr->if_list;
+	while(if_walker)
+	{
+		if(if_walker->ip == tip){
+	  		return if_walker;
+	  	}
+		if_walker = if_walker->next;
+	}
+	return 0;
+}
+
+
+
 void sr_fill_ether_reply(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *ether_hdr_reply, struct sr_if *sr_if_con)
 {
   memcpy(ether_hdr_reply->ether_dhost, ether_hdr->ether_shost, ETHER_ADDR_LEN);
   memcpy(ether_hdr_reply->ether_shost, sr_if_con->addr, ETHER_ADDR_LEN);
-  ether_hdr_reply->ether_type = ethertype_arp;
+  ether_hdr_reply->ether_type = htons(ethertype_arp);
 }
 
 void sr_fill_arp_reply(sr_arp_hdr_t *arp_hdr,sr_arp_hdr_t *arp_hdr_reply, struct sr_if *sr_if_con)
