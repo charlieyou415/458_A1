@@ -104,21 +104,14 @@ void sr_handlepacket(struct sr_instance* sr,
   if (ether_type == ethertype_arp){
 	/* ARP packet */
 	printf("ARP Packet \n");
+	print_hdrs(packet, len);
 	sr_arp_hdr_t *arp_hdr = (sr_arp_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
 	unsigned short ar_op = ntohs(arp_hdr->ar_op);
 	
-	struct sr_if *sr_if_con = sr_get_interface(sr, interface);
 
-	uint32_t ip = ntohl(sr_if_con->ip);
-	printf("Incoming IF IP: %x \n", ip);
-	printf("Incoming IF Name: %s \n", sr_if_con->name);
-	printf("Incoming IF addr: %s \n", sr_if_con->addr);
 	
 	/* Determine if ARP req or reply */
 	if (ar_op == arp_op_request){
-	 	printf("ARP Req \n");
-		printf("ARP sip: %x \n", ntohl(arp_hdr->ar_sip));
-		printf("ARP tip: %x \n", ntohl(arp_hdr->ar_tip));
 
 		/* Find the interface matching with the ARP tip */
 		struct sr_if* target_if = find_tip_in_router(sr, arp_hdr->ar_tip);
@@ -132,6 +125,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
 
 		if(target_if){
+		  printf("ARP to my IPs\n");
 		  /* The requested tip is one of the router's interfaces, REPLY */
 			/* Create a new ethernet header */
                 	sr_fill_ether_reply_arp(ether_hdr, ether_hdr_reply, target_if);
@@ -142,10 +136,12 @@ void sr_handlepacket(struct sr_instance* sr,
                 	/* Put the new ethernet hdr + arp packet together */
                 	memcpy(reply_packet, ether_hdr_reply, sizeof(sr_ethernet_hdr_t));
                 	memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), arp_hdr_reply, sizeof(sr_arp_hdr_t));
-
+			printf("ARP Reply sent: \n");
+			print_hdrs(reply_packet, len);
                 	/* Send the packet back */
                 	sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), target_if->name);
 		} else {
+		 printf("ARP not to my IPs\n");
 		  /* The requested tip is not one of the router's interfaces, BROADCAST */
 			struct sr_if* if_walker = 0;
 			if_walker = sr->if_list;
@@ -156,7 +152,10 @@ void sr_handlepacket(struct sr_instance* sr,
 					sr_fill_ether_reply_arp(ether_hdr, ether_hdr_reply, if_walker);
 					sr_fill_arp_reply(arp_hdr, arp_hdr_reply, if_walker);
 					memcpy(reply_packet, ether_hdr_reply, sizeof(sr_ethernet_hdr_t));
-					memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), arp_hdr_reply, sizeof(sr_arp_hdr_t));
+					memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), arp_hdr_reply, sizeof(sr_arp_hdr_t));												                        				printf("ARP Reply sent: \n");
+                        		print_hdrs(reply_packet, len);
+
+
 					sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), if_walker->name);
 				}
 			}
@@ -184,7 +183,7 @@ void sr_handlepacket(struct sr_instance* sr,
 	struct sr_ip_hdr *ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
 	/*print_hdrs(packet, len);*/
 	printf("Received below:\n");
-	print_hdr_ip(packet + sizeof(sr_ethernet_hdr_t));
+	print_hdrs(packet, len);
 
 
 	/* Check if the target ip is for me (In one of my interfaces) */
@@ -206,8 +205,7 @@ void sr_handlepacket(struct sr_instance* sr,
 			struct sr_icmp_hdr * icmp_hdr = (struct sr_icmp_hdr *)(packet + sizeof(sr_ethernet_hdr_t)  + sizeof(sr_ip_hdr_t));
 			printf("ICMP Type: %u \n", icmp_hdr->icmp_type);
 			printf("ICMP Code: %u \n", icmp_hdr->icmp_code);
-			printf("htons(8): %u \n", htons(8));
-			if((icmp_hdr->icmp_type == htons(8)) && (icmp_hdr->icmp_code == 0))
+			if((icmp_hdr->icmp_type == 8) && (icmp_hdr->icmp_code == 0))
 			/* If it's an ICMP Req message, construct a reply */
 			{
 				printf("ICMP Req\n");
@@ -224,6 +222,8 @@ void sr_handlepacket(struct sr_instance* sr,
 				memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), ip_reply, sizeof(sr_ip_hdr_t));
 				memcpy(reply_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t), icmp_reply, sizeof(sr_icmp_hdr_t));
 				
+
+				printf("target_if->name: %s \n", target_if->name);
 
 				sr_send_packet(sr, reply_packet, len, target_if->name);
 				printf("Sent out below: \n");
@@ -284,7 +284,7 @@ void sr_fill_icmp_echo_reply(uint8_t * packet, sr_ethernet_hdr_t *ether_hdr, sr_
         /* Switch source/dest IP address */
         ip_reply->ip_src = ip_hdr->ip_dst;
         ip_reply->ip_dst = ip_hdr->ip_src;
-        ip_reply->ip_ttl = htons(64);
+        ip_reply->ip_ttl = 64;
         ip_reply->ip_sum = cksum(ip_reply, sizeof(sr_ip_hdr_t));
 
         /* Copy existing ethernet header */
