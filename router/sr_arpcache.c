@@ -10,6 +10,99 @@
 #include "sr_router.h"
 #include "sr_if.h"
 #include "sr_protocol.h"
+#include "sr_utils.h"
+#include "sr_rt.h"
+
+void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
+{
+    if(difftime(time(NULL), req->sent) > 1.0)
+    {
+        if(req->times_sent >= 5)
+        {
+            /* Send ICMP host unreachable */
+            struct sr_packet * pkts = req->packets;
+
+            while(pkts)
+            {
+                /* Loop through all packets and send ICMP host unreachable */
+                uint8_t * packet = pkts->buf;
+                /* Initialize current ether, ip header */
+                struct sr_ethernet_hdr * ether_hdr = (sr_ethernet_hdr_t *)(packet);
+                struct sr_ip_hdr * ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
+                /*Create reply headers */
+                struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *)malloc(sizeof(sr_ethernet_hdr_t));
+                sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
+
+                struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *)malloc(sizeof(sr_ip_hdr_t));
+                sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_protocol_icmp);
+
+                struct sr_icmp_t3_hdr * icmp_t3_reply = (sr_icmp_t3_hdr_t *)malloc(sizeof(sr_icmp_t3_hdr_t));
+                sr_fill_icmp_t3_reply(icmp_t3_reply, 1, packet);
+
+                uint8_t * reply_packet = (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
+
+                memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
+                memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), ip_reply, sizeof(sr_ip_hdr_t));
+                memcpy(reply_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t), icmp_t3_reply, sizeof(sr_icmp_t3_hdr_t));
+
+                sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), pkts->iface);
+
+                printf("Sent out below: \n");
+                print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) +sizeof(sr_icmp_t3_hdr_t));
+                free(ether_reply);
+                free(ip_reply);
+                free(icmp_t3_reply);
+                free(reply_packet);
+
+
+
+
+                pkts = pkts->next;
+            }
+
+
+
+            sr_arpreq_destroy(&(sr->cache), req);
+
+        } else 
+        {
+            /* Send ARP req */
+            /* Loop up IP by LPM */
+            struct sr_rt * lpm_match = longest_prefix_match(sr, req->ip);
+            if(lpm_match == 0)
+            {
+                printf("IP not matched with LMP \n");
+                return;
+            }
+            struct sr_if * target_if = sr_get_interface(sr, (const char *)(lpm_match->interface));
+            
+            struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *)malloc(sizeof(sr_ethernet_hdr_t));
+
+            sr_fill_ether_req_arp(ether_reply, target_if);
+            
+            struct sr_arp_hdr * arp_req = (sr_arp_hdr_t *) malloc(sizeof(sr_arp_hdr_t));
+            sr_fill_arp_req(arp_req, target_if, ether_reply, req->ip);
+
+            uint8_t * reply_packet = (uint8_t *)malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
+            memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
+            memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), arp_req, sizeof(sr_arp_hdr_t));
+
+            sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), target_if->name);
+            printf("Sent out below ARP req: \n");
+            print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
+            free(ether_reply);
+            free(arp_req);
+            free(reply_packet);
+            
+            req->sent = time(NULL);
+            req->times_sent++;
+
+        }
+    }
+    
+}
+
+
 
 /* 
   This function gets called every second. For each request sent out, we keep

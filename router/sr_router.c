@@ -22,21 +22,13 @@
 #include "sr_arpcache.h"
 #include "sr_utils.h"
 
-struct sr_if* find_tip_in_router(struct sr_instance *sr, uint32_t tip);
 
-void sr_fill_ether_hdr_reply(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *ether_reply);
 
-void sr_fill_ip_hdr_reply(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol);
 
-void sr_fill_icmp_echo_reply(sr_icmp_hdr_t *icmp_hdr, sr_icmp_hdr_t * icmp_reply);
 
-void sr_fill_ether_reply_arp(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *ether_hdr_reply, struct sr_if *sr_if_con);
 
-void sr_fill_icmp_t3_reply(sr_icmp_t3_hdr_t *icmp_t3_reply, int code, uint8_t *packet);
 
-struct sr_rt * longest_prefix_match(struct sr_instance *sr, sr_ip_hdr_t *ip_hdr);
 
-void sr_fill_arp_reply(sr_arp_hdr_t *arp_hdr,sr_arp_hdr_t *arp_hdr_reply, struct sr_if *sr_if_con);
 
 /*---------------------------------------------------------------------
  * Method: sr_init(void)
@@ -291,22 +283,18 @@ void sr_handlepacket(struct sr_instance* sr,
             uint16_t old_ip_sum = ip_hdr->ip_sum;
             ip_hdr->ip_sum = 0;
             uint16_t new_ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
-            printf("HERE\n");
             if (old_ip_sum != new_ip_sum)
             {
                 printf("Checksum doesnt match!!!\n");
                     return;
             }
-            printf("HERE2\n");
             ip_hdr->ip_sum = new_ip_sum;
 
             /* Decrement TTL */
             ip_hdr->ip_ttl--;
 
             /* Perform LPM */
-            printf("HERE3\n");
-            struct sr_rt * lpm_match = longest_prefix_match(sr, ip_hdr);
-            printf("HERE4\n");
+            struct sr_rt * lpm_match = longest_prefix_match(sr, ip_hdr->ip_dst);
             if (lpm_match)
             {
                 printf("LPM Matched \n");
@@ -315,7 +303,7 @@ void sr_handlepacket(struct sr_instance* sr,
                 printf("LPM not matched \n");
                 /* initialize icmp type 3 packet */
                 struct sr_icmp_t3_hdr * icmp_t3_reply = (sr_icmp_t3_hdr_t *)malloc(sizeof(sr_icmp_t3_hdr_t));
-                sr_fill_icmp_t3_reply(icmp_t3_reply, 3, packet);
+                sr_fill_icmp_t3_reply(icmp_t3_reply, 0, packet);
                 
                 /* Initialize ip reply header */
                 struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *)malloc(sizeof(sr_ip_hdr_t));
@@ -325,17 +313,8 @@ void sr_handlepacket(struct sr_instance* sr,
                 struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t*) malloc(sizeof(sr_ethernet_hdr_t));
                 sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
                 
-                printf("HERE5\n");
 
-                /* Initialize interface to reply to */
-                struct sr_if * target_if = sr_get_interface(sr, lpm_match->interface);
-                if (target_if == 0)
-                {
-                    printf("Target IF not found!!!\n");
-                    return;
-                }
                 
-                printf("HERE6\n");
 
                 /* Define a new reply_packet (since size might be diff) */
                 uint8_t * reply_packet = (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
@@ -343,7 +322,7 @@ void sr_handlepacket(struct sr_instance* sr,
                 memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), ip_reply, sizeof(sr_ip_hdr_t));
                 memcpy(reply_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t), icmp_t3_reply, sizeof(sr_icmp_t3_hdr_t));
 
-                                                                                                             sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), target_if->name);
+                                                                                                             sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), interface);
                                                                                                              printf("Sent out below: \n");                                                                print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) +sizeof(sr_icmp_t3_hdr_t));
                                                                                                              free(ether_reply);                                                                           free(ip_reply);
                 free(icmp_t3_reply);
@@ -365,11 +344,11 @@ void sr_handlepacket(struct sr_instance* sr,
 
 }/* end sr_ForwardPacket */
 
-struct sr_rt * longest_prefix_match(struct sr_instance *sr, sr_ip_hdr_t *ip_hdr)
+struct sr_rt * longest_prefix_match(struct sr_instance *sr, uint32_t ip_dst)
 {
     struct sr_rt* rt_walker = 0;
     struct sr_rt* matched_rt = 0;
-    uint32_t ip_dst = ip_hdr->ip_dst;
+    
     uint32_t subnet_ip = 0;
     uint32_t match_ip = 0;
     uint32_t mask = 0;
@@ -388,7 +367,7 @@ struct sr_rt * longest_prefix_match(struct sr_instance *sr, sr_ip_hdr_t *ip_hdr)
         subnet_ip = (rt_walker->dest.s_addr) & (rt_walker->mask.s_addr);
         match_ip = ip_dst & (rt_walker->mask.s_addr);
         /* If the "and"ed IPs match */
-        if (subnet_ip == match_ip)
+      if (subnet_ip == match_ip)
         {
             if (rt_walker->mask.s_addr > mask){
                 mask = (uint32_t) rt_walker->mask.s_addr;
@@ -484,6 +463,32 @@ void sr_fill_ether_reply_arp(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *et
     memcpy(ether_hdr_reply->ether_shost, sr_if_con->addr, ETHER_ADDR_LEN);
     ether_hdr_reply->ether_type = htons(ethertype_arp);
 }
+
+void sr_fill_ether_req_arp(sr_ethernet_hdr_t *ether_reply, struct sr_if * sr_if_con)
+{
+    int i;
+    for (i=0; i < ETHER_ADDR_LEN;i++)
+    {
+        ether_reply->ether_dhost[i] = 255;
+    }
+    memcpy(ether_reply->ether_shost, sr_if_con->addr, ETHER_ADDR_LEN);
+    ether_reply->ether_type = htons(ethertype_arp);
+}
+
+void sr_fill_arp_req(sr_arp_hdr_t *arp_req, struct sr_if * sr_if_con, sr_ethernet_hdr_t * ether_reply, uint32_t tip)
+{
+    arp_req->ar_hrd = htons(arp_hrd_ethernet);
+    arp_req->ar_pro = htons(2048);
+    arp_req->ar_hln = (unsigned char) 6;
+    arp_req->ar_pln = (unsigned char) 4;
+    arp_req->ar_op = htons(arp_op_request);
+    memcpy(arp_req->ar_sha, ether_reply->ether_shost, ETHER_ADDR_LEN);
+    memcpy(arp_req->ar_tha, ether_reply->ether_dhost, ETHER_ADDR_LEN);
+    arp_req->ar_sip = sr_if_con->ip;
+    arp_req->ar_tip = tip;
+
+}
+
 
 void sr_fill_arp_reply(sr_arp_hdr_t *arp_hdr,sr_arp_hdr_t *arp_hdr_reply, struct sr_if *sr_if_con)
 {

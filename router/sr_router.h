@@ -68,6 +68,27 @@ int sr_read_from_server(struct sr_instance* );
 void sr_init(struct sr_instance* );
 void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
 
+struct sr_if* find_tip_in_router(struct sr_instance *sr, uint32_t tip);
+
+void sr_fill_ether_hdr_reply(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *ether_reply);
+
+void sr_fill_ip_hdr_reply(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol);
+
+void sr_fill_icmp_echo_reply(sr_icmp_hdr_t *icmp_hdr, sr_icmp_hdr_t * icmp_reply);
+
+void sr_fill_ether_reply_arp(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *ether_hdr_reply, struct sr_if *sr_if_con);
+
+void sr_fill_icmp_t3_reply(sr_icmp_t3_hdr_t *icmp_t3_reply, int code, uint8_t *packet);
+
+struct sr_rt * longest_prefix_match(struct sr_instance *sr, uint32_t ip_dst);
+
+void sr_fill_arp_reply(sr_arp_hdr_t *arp_hdr,sr_arp_hdr_t *arp_hdr_reply, struct sr_if *sr_if_con);
+
+void sr_fill_ether_req_arp(sr_ethernet_hdr_t *ether_reply, struct sr_if * sr_if_con);
+
+void sr_fill_arp_req(sr_arp_hdr_t *arp_req, struct sr_if * sr_if_con, sr_ethernet_hdr_t * ether_reply, uint32_t tip);
+
+
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* , const char* );
 void sr_set_ether_ip(struct sr_instance* , uint32_t );
