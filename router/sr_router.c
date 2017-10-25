@@ -300,6 +300,7 @@ void sr_handlepacket(struct sr_instance* sr,
                         } else {
                             /* Entry does not exist, queue for ARP req */
 
+                            /* Update IP hdr */
                             uint32_t original_src_ip = ip_hdr->ip_src;
                             ip_hdr->ip_src = ip_hdr->ip_dst;
                             ip_hdr->ip_dst = original_src_ip;
@@ -309,6 +310,13 @@ void sr_handlepacket(struct sr_instance* sr,
                             ip_hdr->ip_ttl = 64;
                             ip_hdr->ip_sum = 0;
                             ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
+
+                            /* Update ICMP */
+
+                            icmp_hdr->icmp_type = 0;
+                            icmp_hdr->icmp_code = 0;
+                            icmp_hdr->icmp_sum = 0;
+                            icmp_hdr->icmp_sum = cksum(icmp_hdr, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
 
                             struct sr_arpreq * req = sr_arpcache_queuereq(&(sr->cache), original_src_ip, packet, len, interface);
                             handle_arpreq(sr, req);
