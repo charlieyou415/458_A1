@@ -247,6 +247,14 @@ void sr_handlepacket(struct sr_instance* sr,
                 if((icmp_hdr->icmp_type == 8) && (icmp_hdr->icmp_code == 0))
                     /* If it's an ICMP Req message, construct a reply */
                 {
+                    
+                    
+                    
+
+                    
+                    
+                    
+                    
                     printf("ICMP Req\n");
                     /* Create a new ethernet header */
                     struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *)malloc(sizeof(sr_ethernet_hdr_t));
@@ -267,7 +275,9 @@ void sr_handlepacket(struct sr_instance* sr,
                     printf("target_if->name: %s \n", target_if->name);
                     printf("outgoing if (interface): %s \n", interface);
 
-                    sr_send_packet(sr, reply_packet, len, interface);
+                    /*sr_send_packet(sr, reply_packet, len, interface);*/
+                    struct sr_arpreq * req = sr_arpcache_queuereq(&(sr->cache), ip_reply->ip_dst, reply_packet, len, interface);
+                    handle_arpreq(sr, req);
                     printf("Sent out below: \n");
                     print_hdrs(reply_packet, len);
                     free(ether_reply);
