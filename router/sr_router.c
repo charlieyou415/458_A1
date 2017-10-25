@@ -265,8 +265,9 @@ void sr_handlepacket(struct sr_instance* sr,
 
 
                     printf("target_if->name: %s \n", target_if->name);
+                    printf("outgoing if (interface): %s \n", interface);
 
-                    sr_send_packet(sr, reply_packet, len, target_if->name);
+                    sr_send_packet(sr, reply_packet, len, interface);
                     printf("Sent out below: \n");
                     print_hdrs(reply_packet, len);
                     free(ether_reply);
@@ -297,8 +298,8 @@ void sr_handlepacket(struct sr_instance* sr,
                 memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), ip_reply, sizeof(sr_ip_hdr_t));
                 memcpy(reply_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t), icmp_t3_reply, sizeof(sr_icmp_t3_hdr_t));
 
-
-                sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), target_if->name);
+                printf("outgoing if (interface): %s \n", interface);
+                sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), interface);
                 printf("Sent out below: \n");
                 print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) +sizeof(sr_icmp_t3_hdr_t));
                 free(ether_reply);
@@ -327,10 +328,14 @@ void sr_handlepacket(struct sr_instance* sr,
                 printf("Checksum doesnt match!!!\n");
                     return;
             }
-            ip_hdr->ip_sum = new_ip_sum;
 
             /* Decrement TTL */
             ip_hdr->ip_ttl--;
+            
+            /* Update checksum after ttl */
+            ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
+
+
 
             /* Perform LPM */
             struct sr_rt * lpm_match = longest_prefix_match(sr, ip_hdr->ip_dst);
