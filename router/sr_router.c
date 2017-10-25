@@ -174,6 +174,45 @@ void sr_handlepacket(struct sr_instance* sr,
 
         } else if (ar_op == arp_op_reply){
             printf("ARP Reply \n");
+            /* Insert the IP->Mac provided by the arp packet to cache */
+            unsigned char * mac = (unsigned char *) malloc(ETHER_ADDR_LEN * sizeof(unsigned char));
+            memcpy(mac, arp_hdr->ar_sha, ETHER_ADDR_LEN);
+            uint32_t ip = arp_hdr->ar_sip;
+            
+            struct sr_arpreq * req = sr_arpcache_insert(&(sr->cache), mac, ip); 
+            
+            /* If a req with this IP/Mac already exist, send outstanding packets */
+            if (req)
+            {
+                struct sr_packet * pkts = req->packets;
+
+                while (pkts)
+                {
+                    struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *) pkts->buf;
+                    struct sr_if * outgoing_if = sr_get_interface(sr, pkts->iface);
+                    
+                    printf("outgoing_if name: %s \n", outgoing_if->name);
+                    printf("pkts->iface %s \n", pkts->iface);
+
+                    memcpy(ether_reply->ether_dhost, mac, ETHER_ADDR_LEN);
+                    memcpy(ether_reply->ether_shost, outgoing_if->addr, ETHER_ADDR_LEN);
+
+
+
+
+                    sr_send_packet(sr, pkts->buf, pkts->len, pkts->iface);
+
+                    printf("Sent out below:\n");
+                    print_hdrs(pkts->buf, pkts->len);
+
+                    
+                
+                    pkts = pkts->next;
+                }
+            }
+            free(mac);
+            
+
         }
 
     } else if (ether_type == ethertype_ip){
@@ -298,7 +337,42 @@ void sr_handlepacket(struct sr_instance* sr,
             if (lpm_match)
             {
                 printf("LPM Matched \n");
-                
+                struct sr_arpentry * entry = sr_arpcache_lookup(&(sr->cache), lpm_match->gw.s_addr);
+
+                if(entry)
+                /* If the ip->mac mapping exists, use it to send the packet */
+                {
+                    printf("Entry exists\n");
+                    struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *)packet;
+                    struct sr_if * target_if = sr_get_interface(sr, lpm_match->interface);
+                    memcpy(ether_reply->ether_dhost, entry->mac, ETHER_ADDR_LEN);
+                    memcpy(ether_reply->ether_shost, target_if->addr, ETHER_ADDR_LEN);
+
+                    sr_send_packet(sr, packet, len, target_if->name);
+                    printf("Sent out below\n");
+                    print_hdrs(packet, len);
+
+
+
+
+
+
+                    free(entry);
+                } else {
+                    printf("Entry does not exist\n");
+                /* If ip->mac mapping d.n.e. then add to request */
+                    struct sr_arpreq * req = sr_arpcache_queuereq(&(sr->cache), lpm_match->gw.s_addr, packet, len, lpm_match->interface);
+                    handle_arpreq(sr, req);
+
+
+                }
+
+
+
+
+
+
+
             } else {
                 printf("LPM not matched \n");
                 /* initialize icmp type 3 packet */
@@ -358,11 +432,12 @@ struct sr_rt * longest_prefix_match(struct sr_instance *sr, uint32_t ip_dst)
         printf("Routing table empty \n");
         return 0;
     }
-    printf("IN4\n");
     rt_walker = sr->routing_table;
+    
+    printf("Performing LPM\n");
+    
     while(rt_walker)
     {
-        printf("INwhile\n");
         
         subnet_ip = (rt_walker->dest.s_addr) & (rt_walker->mask.s_addr);
         match_ip = ip_dst & (rt_walker->mask.s_addr);
@@ -378,7 +453,6 @@ struct sr_rt * longest_prefix_match(struct sr_instance *sr, uint32_t ip_dst)
         rt_walker = rt_walker->next;
 
     }
-    printf("IN5\n");
     return matched_rt;
 
 

@@ -44,8 +44,10 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
                 memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
                 memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), ip_reply, sizeof(sr_ip_hdr_t));
                 memcpy(reply_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t), icmp_t3_reply, sizeof(sr_icmp_t3_hdr_t));
+                
+                struct sr_if * reply_if = find_tip_in_router(sr, ip_hdr->ip_dst);
 
-                sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), pkts->iface);
+                sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), reply_if->name);
 
                 printf("Sent out below: \n");
                 print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) +sizeof(sr_icmp_t3_hdr_t));
@@ -67,14 +69,24 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
         } else 
         {
             /* Send ARP req */
-            /* Loop up IP by LPM */
-            struct sr_rt * lpm_match = longest_prefix_match(sr, req->ip);
-            if(lpm_match == 0)
+            
+
+            /* Find the outgoing interface name given ip (gateway) */
+
+            struct sr_rt* rt_walker = 0;
+            char * if_name = (char *) malloc(sr_IFACE_NAMELEN * sizeof(char));
+            rt_walker = sr->routing_table;
+            while(rt_walker)
             {
-                printf("IP not matched with LMP \n");
-                return;
+                if (rt_walker->gw.s_addr == req->ip)
+                {
+                    memcpy(if_name, rt_walker->interface, sr_IFACE_NAMELEN);
+                
+                }
+                rt_walker = rt_walker->next;
             }
-            struct sr_if * target_if = sr_get_interface(sr, (const char *)(lpm_match->interface));
+            
+            struct sr_if * target_if = sr_get_interface(sr, if_name);
             
             struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *)malloc(sizeof(sr_ethernet_hdr_t));
 
@@ -93,6 +105,7 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
             free(ether_reply);
             free(arp_req);
             free(reply_packet);
+            free(if_name);
             
             req->sent = time(NULL);
             req->times_sent++;
@@ -110,7 +123,14 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
   See the comments in the header file for an idea of what it should look like.
 */
 void sr_arpcache_sweepreqs(struct sr_instance *sr) { 
-    /* Fill this in */
+    /* For each request, in sr->cache, call handle_arpreq */
+    struct sr_arpcache * cache = &(sr->cache);
+    struct sr_arpreq * req = cache->requests;
+    while(req)
+    {
+        handle_arpreq(sr, req);
+        req = req->next;
+    }
 }
 
 /* You should not need to touch the rest of this code. */
