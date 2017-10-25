@@ -253,7 +253,7 @@ void sr_handlepacket(struct sr_instance* sr,
                     /* Create a new ip header */
                     struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *) malloc(sizeof(sr_ip_hdr_t));
                     /* Create a new icmp header */
-                    struct sr_icmp_hdr * icmp_reply = (struct sr_icmp_hdr *) malloc(sizeof(sr_icmp_hdr_t));
+                    struct sr_icmp_hdr * icmp_reply = (struct sr_icmp_hdr *) malloc(len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
                     sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
                     sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_hdr->ip_p, len - sizeof(sr_ethernet_hdr_t));
                     sr_fill_icmp_echo_reply(icmp_hdr, icmp_reply, len);
