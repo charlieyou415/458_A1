@@ -418,13 +418,16 @@ void sr_handlepacket(struct sr_instance* sr,
 
             } else {
                 printf("LPM not matched \n");
+                
+                struct sr_if * outgoing_if = sr_get_interface(sr, interface);
+                
                 /* initialize icmp type 3 packet */
                 struct sr_icmp_t3_hdr * icmp_t3_reply = (sr_icmp_t3_hdr_t *)malloc(sizeof(sr_icmp_t3_hdr_t));
                 sr_fill_icmp_t3_reply(icmp_t3_reply,3, 0, packet);
                 
                 /* Initialize ip reply header */
                 struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *)malloc(sizeof(sr_ip_hdr_t));
-                sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_protocol_icmp);
+                sr_fill_ip_hdr_icmpt11(ip_hdr, ip_reply, ip_protocol_icmp, outgoing_if->ip);
 
                 /* Initialize ethernet reply header */
                 struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t*) malloc(sizeof(sr_ethernet_hdr_t));
@@ -438,10 +441,11 @@ void sr_handlepacket(struct sr_instance* sr,
                 memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
                 memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), ip_reply, sizeof(sr_ip_hdr_t));
                 memcpy(reply_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t), icmp_t3_reply, sizeof(sr_icmp_t3_hdr_t));
-
-                                                                                                             sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), interface);
-                                                                                                             printf("Sent out below: \n");                                                                print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) +sizeof(sr_icmp_t3_hdr_t));
-                                                                                                             free(ether_reply);                                                                           free(ip_reply);
+                sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), interface);
+                printf("Sent out below: \n");
+                print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) +sizeof(sr_icmp_t3_hdr_t));
+                free(ether_reply);
+                free(ip_reply);
                 free(icmp_t3_reply);
                 free(reply_packet);
 
