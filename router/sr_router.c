@@ -256,7 +256,7 @@ void sr_handlepacket(struct sr_instance* sr,
                     struct sr_icmp_hdr * icmp_reply = (struct sr_icmp_hdr *) malloc(sizeof(sr_icmp_hdr_t));
                     sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
                     sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_hdr->ip_p, len - sizeof(sr_ethernet_hdr_t));
-                    sr_fill_icmp_echo_reply(icmp_hdr, icmp_reply);
+                    sr_fill_icmp_echo_reply(icmp_hdr, icmp_reply, len);
                     /* Combine ethernet + ip + icmp headers */
                     memcpy(reply_packet, packet, len);
                     memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
@@ -290,7 +290,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
                 /* Create new ICMP port unreachable packet */
                 struct sr_icmp_t3_hdr * icmp_t3_reply = (sr_icmp_t3_hdr_t *)malloc(sizeof(sr_icmp_t3_hdr_t));
-                sr_fill_icmp_t3_reply(icmp_t3_reply,3, 3, packet);
+                sr_fill_icmp_t3_reply(icmp_t3_reply,3, 3, packet, len);
                 free(reply_packet);
                 /* Define a new reply_packet (since size might be diff) */
                 uint8_t * reply_packet = (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
@@ -346,7 +346,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
                 sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
                 sr_fill_ip_hdr_icmpt11(ip_hdr, ip_reply, ip_protocol_icmp, outgoing_if->ip, len - sizeof(sr_ethernet_hdr_t));
-                sr_fill_icmp_t3_reply(icmp_t3_reply, 11, 0, packet);
+                sr_fill_icmp_t3_reply(icmp_t3_reply, 11, 0, packet, len);
 
                 /* Create ICMP type 11 */ 
                 uint8_t * reply_packet = (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
@@ -423,7 +423,7 @@ void sr_handlepacket(struct sr_instance* sr,
                 
                 /* initialize icmp type 3 packet */
                 struct sr_icmp_t3_hdr * icmp_t3_reply = (sr_icmp_t3_hdr_t *)malloc(sizeof(sr_icmp_t3_hdr_t));
-                sr_fill_icmp_t3_reply(icmp_t3_reply,3, 0, packet);
+                sr_fill_icmp_t3_reply(icmp_t3_reply,3, 0, packet, len);
                 
                 /* Initialize ip reply header */
                 struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *)malloc(sizeof(sr_ip_hdr_t));
@@ -542,7 +542,7 @@ struct sr_if* find_tip_in_router(struct sr_instance *sr, uint32_t tip)
 }
 
 
-void sr_fill_icmp_t3_reply(sr_icmp_t3_hdr_t *icmp_t3_reply,int type,  int code, uint8_t *packet)
+void sr_fill_icmp_t3_reply(sr_icmp_t3_hdr_t *icmp_t3_reply,int type,  int code, uint8_t *packet, unsigned int len)
 {
     icmp_t3_reply->icmp_type = type;
     icmp_t3_reply->icmp_code = code;
@@ -550,7 +550,7 @@ void sr_fill_icmp_t3_reply(sr_icmp_t3_hdr_t *icmp_t3_reply,int type,  int code, 
     icmp_t3_reply->unused = 0;
     icmp_t3_reply->next_mtu = 0;
     memcpy(icmp_t3_reply->data, packet + sizeof(sr_ethernet_hdr_t), ICMP_DATA_SIZE);
-    icmp_t3_reply->icmp_sum = cksum(icmp_t3_reply, sizeof(sr_icmp_t3_hdr_t));
+    icmp_t3_reply->icmp_sum = cksum(icmp_t3_reply, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
 }
 
 void sr_fill_ether_hdr_reply(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *ether_reply)
@@ -599,7 +599,7 @@ void sr_fill_ip_hdr_reply(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protoc
 
 }
 
-void sr_fill_icmp_echo_reply(sr_icmp_hdr_t *icmp_hdr, sr_icmp_hdr_t * icmp_reply)
+void sr_fill_icmp_echo_reply(sr_icmp_hdr_t *icmp_hdr, sr_icmp_hdr_t * icmp_reply, unsigned int len)
 {
 
     /* Copy existing icmp hdr */
@@ -607,7 +607,7 @@ void sr_fill_icmp_echo_reply(sr_icmp_hdr_t *icmp_hdr, sr_icmp_hdr_t * icmp_reply
     icmp_reply->icmp_type = 0;
     icmp_reply->icmp_code = 0;
     icmp_reply->icmp_sum = 0;
-    icmp_reply->icmp_sum = cksum(icmp_reply, sizeof(sr_icmp_hdr_t));
+    icmp_reply->icmp_sum = cksum(icmp_reply, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
 
 
 }

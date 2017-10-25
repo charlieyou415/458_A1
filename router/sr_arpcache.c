@@ -38,7 +38,7 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
                 sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_protocol_icmp, pkts->len - sizeof(sr_ethernet_hdr_t));
 
                 struct sr_icmp_t3_hdr * icmp_t3_reply = (sr_icmp_t3_hdr_t *)malloc(sizeof(sr_icmp_t3_hdr_t));
-                sr_fill_icmp_t3_reply(icmp_t3_reply,3, 1, packet);
+                sr_fill_icmp_t3_reply(icmp_t3_reply,3, 1, packet, pkts->len);
 
                 uint8_t * reply_packet = (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
 

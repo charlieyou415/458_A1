@@ -74,11 +74,11 @@ void sr_fill_ether_hdr_reply(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *et
 
 void sr_fill_ip_hdr_reply(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol, int ip_length);
 
-void sr_fill_icmp_echo_reply(sr_icmp_hdr_t *icmp_hdr, sr_icmp_hdr_t * icmp_reply);
+void sr_fill_icmp_echo_reply(sr_icmp_hdr_t *icmp_hdr, sr_icmp_hdr_t * icmp_reply, unsigned int len);
 
 void sr_fill_ether_reply_arp(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *ether_hdr_reply, struct sr_if *sr_if_con);
 
-void sr_fill_icmp_t3_reply(sr_icmp_t3_hdr_t *icmp_t3_reply,int type, int code, uint8_t *packet);
+void sr_fill_icmp_t3_reply(sr_icmp_t3_hdr_t *icmp_t3_reply,int type, int code, uint8_t *packet, unsigned int len);
 
 struct sr_rt * longest_prefix_match(struct sr_instance *sr, uint32_t ip_dst);
 
