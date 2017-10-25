@@ -72,7 +72,7 @@ struct sr_if* find_tip_in_router(struct sr_instance *sr, uint32_t tip);
 
 void sr_fill_ether_hdr_reply(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *ether_reply);
 
-void sr_fill_ip_hdr_reply(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol);
+void sr_fill_ip_hdr_reply(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol, int ip_length);
 
 void sr_fill_icmp_echo_reply(sr_icmp_hdr_t *icmp_hdr, sr_icmp_hdr_t * icmp_reply);
 
@@ -88,7 +88,7 @@ void sr_fill_ether_req_arp(sr_ethernet_hdr_t *ether_reply, struct sr_if * sr_if_
 
 void sr_fill_arp_req(sr_arp_hdr_t *arp_req, struct sr_if * sr_if_con, sr_ethernet_hdr_t * ether_reply, uint32_t tip);
 
-void sr_fill_ip_hdr_icmpt11(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol, uint32_t ip);
+void sr_fill_ip_hdr_icmpt11(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol, uint32_t ip, int ip_length);
 
 
 

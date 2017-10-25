@@ -255,7 +255,7 @@ void sr_handlepacket(struct sr_instance* sr,
                     /* Create a new icmp header */
                     struct sr_icmp_hdr * icmp_reply = (struct sr_icmp_hdr *) malloc(sizeof(sr_icmp_hdr_t));
                     sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
-                    sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_hdr->ip_p);
+                    sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_hdr->ip_p, sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_hdr_t));
                     sr_fill_icmp_echo_reply(icmp_hdr, icmp_reply);
                     /* Combine ethernet + ip + icmp headers */
                     memcpy(reply_packet, packet, len);
@@ -286,7 +286,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
                 /* Create new ip header */
                 struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *)malloc(sizeof(sr_ip_hdr_t));
-                sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_protocol_icmp);
+                sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_protocol_icmp, sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
 
                 /* Create new ICMP port unreachable packet */
                 struct sr_icmp_t3_hdr * icmp_t3_reply = (sr_icmp_t3_hdr_t *)malloc(sizeof(sr_icmp_t3_hdr_t));
@@ -345,7 +345,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
 
                 sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
-                sr_fill_ip_hdr_icmpt11(ip_hdr, ip_reply, ip_protocol_icmp, outgoing_if->ip);
+                sr_fill_ip_hdr_icmpt11(ip_hdr, ip_reply, ip_protocol_icmp, outgoing_if->ip, sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
                 sr_fill_icmp_t3_reply(icmp_t3_reply, 11, 0, packet);
 
                 /* Create ICMP type 11 */ 
@@ -427,7 +427,7 @@ void sr_handlepacket(struct sr_instance* sr,
                 
                 /* Initialize ip reply header */
                 struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *)malloc(sizeof(sr_ip_hdr_t));
-                sr_fill_ip_hdr_icmpt11(ip_hdr, ip_reply, ip_protocol_icmp, outgoing_if->ip);
+                sr_fill_ip_hdr_icmpt11(ip_hdr, ip_reply, ip_protocol_icmp, outgoing_if->ip, sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
 
                 /* Initialize ethernet reply header */
                 struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t*) malloc(sizeof(sr_ethernet_hdr_t));
@@ -563,7 +563,7 @@ void sr_fill_ether_hdr_reply(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *et
 
 }
 
-void sr_fill_ip_hdr_icmpt11(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol, uint32_t ip)
+void sr_fill_ip_hdr_icmpt11(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol, uint32_t ip, int ip_length)
 {
     /* copy existing ip header */
     memcpy(ip_reply, ip_hdr, sizeof(sr_ip_hdr_t));
@@ -571,7 +571,7 @@ void sr_fill_ip_hdr_icmpt11(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int prot
     ip_reply->ip_src = ip;
     ip_reply->ip_dst = ip_hdr->ip_src;
     ip_reply->ip_id = 0;
-    ip_reply->ip_len = htons(56);
+    ip_reply->ip_len = htons(ip_length);
     ip_reply->ip_p = protocol;
     ip_reply->ip_ttl = 64;
     ip_reply->ip_sum = 0;
@@ -581,7 +581,7 @@ void sr_fill_ip_hdr_icmpt11(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int prot
 }
 
 
-void sr_fill_ip_hdr_reply(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol)
+void sr_fill_ip_hdr_reply(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol, int ip_length)
 {
     /* copy existing ip header */
     memcpy(ip_reply, ip_hdr, sizeof(sr_ip_hdr_t));
@@ -589,7 +589,7 @@ void sr_fill_ip_hdr_reply(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protoc
     ip_reply->ip_src = ip_hdr->ip_dst;
     ip_reply->ip_dst = ip_hdr->ip_src;
     ip_reply->ip_id = 0;
-    ip_reply->ip_len = htons(56);
+    ip_reply->ip_len = htons(ip_length);
     ip_reply->ip_p = protocol;
     ip_reply->ip_ttl = 64;
     ip_reply->ip_sum = 0;
