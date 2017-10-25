@@ -340,9 +340,12 @@ void sr_handlepacket(struct sr_instance* sr,
                 struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *)malloc(sizeof(sr_ethernet_hdr_t));
                 struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *)malloc(sizeof(sr_ip_hdr_t));
                 struct sr_icmp_t3_hdr * icmp_t3_reply = (sr_icmp_t3_hdr_t *)malloc(sizeof(sr_icmp_t3_hdr_t));
+                
+                struct sr_if* outgoing_if = sr_get_interface(sr, interface);
+
 
                 sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
-                sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_protocol_icmp);
+                sr_fill_ip_hdr_icmpt11(ip_hdr, ip_reply, ip_protocol_icmp, outgoing_if->ip);
                 sr_fill_icmp_t3_reply(icmp_t3_reply, 11, 0, packet);
 
                 /* Create ICMP type 11 */ 
@@ -555,6 +558,24 @@ void sr_fill_ether_hdr_reply(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *et
     memcpy(ether_reply->ether_shost, ether_hdr->ether_dhost, ETHER_ADDR_LEN);
 
 }
+
+void sr_fill_ip_hdr_icmpt11(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol, uint32_t ip)
+{
+    /* copy existing ip header */
+    memcpy(ip_reply, ip_hdr, sizeof(sr_ip_hdr_t));
+    /* Switch source/dest IP address */
+    ip_reply->ip_src = ip;
+    ip_reply->ip_dst = ip_hdr->ip_src;
+    ip_reply->ip_id = 0;
+    ip_reply->ip_len = htons(56);
+    ip_reply->ip_p = protocol;
+    ip_reply->ip_ttl = 64;
+    ip_reply->ip_sum = 0;
+    ip_reply->ip_sum = cksum(ip_reply, sizeof(sr_ip_hdr_t));
+
+
+}
+
 
 void sr_fill_ip_hdr_reply(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol)
 {

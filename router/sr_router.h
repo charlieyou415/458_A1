@@ -88,6 +88,10 @@ void sr_fill_ether_req_arp(sr_ethernet_hdr_t *ether_reply, struct sr_if * sr_if_
 
 void sr_fill_arp_req(sr_arp_hdr_t *arp_req, struct sr_if * sr_if_con, sr_ethernet_hdr_t * ether_reply, uint32_t tip);
 
+void sr_fill_ip_hdr_icmpt11(sr_ip_hdr_t *ip_hdr, sr_ip_hdr_t *ip_reply, int protocol, uint32_t ip);
+
+
+
 struct sr_rt * find_rt_by_ip(struct sr_instance *sr, uint32_t ip);
 
 /* -- sr_if.c -- */
