@@ -18,6 +18,7 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
     if(difftime(time(NULL), req->sent) > 1.0)
     {
         if(req->times_sent >= 5)
+       
         {
             /* Send ICMP host unreachable */
             struct sr_packet * pkts = req->packets;
@@ -44,10 +45,13 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
                 memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
                 memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), ip_reply, sizeof(sr_ip_hdr_t));
                 memcpy(reply_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t), icmp_t3_reply, sizeof(sr_icmp_t3_hdr_t));
-                
-                struct sr_if * reply_if = find_tip_in_router(sr, ip_hdr->ip_dst);
+                struct sr_rt * outgoing_rt = find_rt_by_ip(sr, ip_reply->ip_dst);
 
-                sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), reply_if->name);
+                printf("outgoing_rt->interface: %s \n", outgoing_rt->interface);
+                print_addr_ip_int(ip_reply->ip_dst);
+                printf("Outgoing interface: %s \n", pkts->iface);
+
+                sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), outgoing_rt->interface);
 
                 printf("Sent out below: \n");
                 print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) +sizeof(sr_icmp_t3_hdr_t));

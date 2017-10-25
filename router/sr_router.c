@@ -423,6 +423,23 @@ void sr_handlepacket(struct sr_instance* sr,
 
 }/* end sr_ForwardPacket */
 
+struct sr_rt * find_rt_by_ip(struct sr_instance *sr, uint32_t ip)
+{
+    struct sr_rt* rt_walker = 0;
+    rt_walker = sr->routing_table;
+    while(rt_walker)
+    {
+        if(rt_walker->dest.s_addr == ip)
+        {
+            return rt_walker;
+        }
+        rt_walker = rt_walker->next;
+    }
+    return 0;
+
+}
+
+
 struct sr_rt * longest_prefix_match(struct sr_instance *sr, uint32_t ip_dst)
 {
     struct sr_rt* rt_walker = 0;
