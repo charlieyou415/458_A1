@@ -299,7 +299,18 @@ void sr_handlepacket(struct sr_instance* sr,
                             free(reply_packet);
                         } else {
                             /* Entry does not exist, queue for ARP req */
-                            struct sr_arpreq * req = sr_arpcache_queuereq(&(sr->cache), ip_hdr->ip_src, packet, len, interface);
+
+                            uint32_t original_src_ip = ip_hdr->ip_src;
+                            ip_hdr->ip_src = ip_hdr->ip_dst;
+                            ip_hdr->ip_dst = original_src_ip;
+                            ip_hdr->ip_id = 0;
+                            ip_hdr->ip_len = len - sizeof(sr_ethernet_hdr_t);
+                            ip_hdr->ip_p = ip_protocol_icmp;
+                            ip_hdr->ip_ttl = 64;
+                            ip_hdr->ip_sum = 0;
+                            ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
+
+                            struct sr_arpreq * req = sr_arpcache_queuereq(&(sr->cache), original_src_ip, packet, len, interface);
                             handle_arpreq(sr, req);
 
                         }
