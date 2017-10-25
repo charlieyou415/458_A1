@@ -550,7 +550,7 @@ void sr_fill_icmp_t3_reply(sr_icmp_t3_hdr_t *icmp_t3_reply,int type,  int code, 
     icmp_t3_reply->unused = 0;
     icmp_t3_reply->next_mtu = 0;
     memcpy(icmp_t3_reply->data, packet + sizeof(sr_ethernet_hdr_t), ICMP_DATA_SIZE);
-    icmp_t3_reply->icmp_sum = cksum(icmp_t3_reply, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
+    icmp_t3_reply->icmp_sum = cksum(icmp_t3_reply, sizeof(sr_icmp_t3_hdr_t));
 }
 
 void sr_fill_ether_hdr_reply(sr_ethernet_hdr_t *ether_hdr, sr_ethernet_hdr_t *ether_reply)
