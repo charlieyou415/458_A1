@@ -603,7 +603,8 @@ void sr_fill_icmp_echo_reply(sr_icmp_hdr_t *icmp_hdr, sr_icmp_hdr_t * icmp_reply
 {
 
     /* Copy existing icmp hdr */
-    memcpy(icmp_reply, icmp_hdr, sizeof(sr_icmp_hdr_t));
+    /*memcpy(icmp_reply, icmp_hdr, sizeof(sr_icmp_hdr_t));*/
+    memcpy(icmp_reply, icmp_hdr, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
     icmp_reply->icmp_type = 0;
     icmp_reply->icmp_code = 0;
     icmp_reply->icmp_sum = 0;
