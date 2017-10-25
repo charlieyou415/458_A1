@@ -305,7 +305,7 @@ void sr_handlepacket(struct sr_instance* sr,
                             ip_hdr->ip_src = ip_hdr->ip_dst;
                             ip_hdr->ip_dst = original_src_ip;
                             ip_hdr->ip_id = 0;
-                            ip_hdr->ip_len = len - sizeof(sr_ethernet_hdr_t);
+                            ip_hdr->ip_len = htons(len - sizeof(sr_ethernet_hdr_t));
                             ip_hdr->ip_p = ip_protocol_icmp;
                             ip_hdr->ip_ttl = 64;
                             ip_hdr->ip_sum = 0;
