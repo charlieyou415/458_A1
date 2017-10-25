@@ -290,7 +290,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
                 /* Create new ICMP port unreachable packet */
                 struct sr_icmp_t3_hdr * icmp_t3_reply = (sr_icmp_t3_hdr_t *)malloc(sizeof(sr_icmp_t3_hdr_t));
-                sr_fill_icmp_t3_reply(icmp_t3_reply, 3, packet);
+                sr_fill_icmp_t3_reply(icmp_t3_reply,3, 3, packet);
                 free(reply_packet);
                 /* Define a new reply_packet (since size might be diff) */
                 uint8_t * reply_packet = (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
@@ -313,7 +313,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
 
         } else {
-            /* If the IP packet is not for me */
+            /* If the IP packet is not for me, forward */
 
             printf("IP Packet not for me \n");
 
@@ -332,6 +332,41 @@ void sr_handlepacket(struct sr_instance* sr,
             /* Decrement TTL */
             ip_hdr->ip_ttl--;
             
+            /* Check if TTL is 0 after reduction */
+            if (ip_hdr->ip_ttl == 0)
+            {
+                /* Send ICMP type 11 (time exceeded) */
+
+                struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *)malloc(sizeof(sr_ethernet_hdr_t));
+                struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *)malloc(sizeof(sr_ip_hdr_t));
+                struct sr_icmp_t3_hdr * icmp_t3_reply = (sr_icmp_t3_hdr_t *)malloc(sizeof(sr_icmp_t3_hdr_t));
+
+                sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
+                sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_protocol_icmp);
+                sr_fill_icmp_t3_reply(icmp_t3_reply, 11, 0, packet);
+
+                /* Create ICMP type 11 */ 
+                uint8_t * reply_packet = (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
+
+                memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
+                memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), ip_reply, sizeof(sr_ip_hdr_t));
+                memcpy(reply_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t), icmp_t3_reply, sizeof(sr_icmp_t3_hdr_t));
+                
+                printf("outgoing if (interface): %s \n", interface);
+                sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), interface);
+                printf("Sent out below: \n");
+                print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
+                free(ether_reply);
+                free(ip_reply);
+                free(icmp_t3_reply);
+                free(reply_packet);
+                
+
+                return;
+            }
+
+
+
             /* Update checksum after ttl */
             ip_hdr->ip_sum = cksum(ip_hdr, sizeof(sr_ip_hdr_t));
 
@@ -356,7 +391,7 @@ void sr_handlepacket(struct sr_instance* sr,
                     sr_send_packet(sr, packet, len, target_if->name);
                     printf("Sent out below\n");
                     print_hdrs(packet, len);
-
+                    
 
 
 
@@ -382,7 +417,7 @@ void sr_handlepacket(struct sr_instance* sr,
                 printf("LPM not matched \n");
                 /* initialize icmp type 3 packet */
                 struct sr_icmp_t3_hdr * icmp_t3_reply = (sr_icmp_t3_hdr_t *)malloc(sizeof(sr_icmp_t3_hdr_t));
-                sr_fill_icmp_t3_reply(icmp_t3_reply, 0, packet);
+                sr_fill_icmp_t3_reply(icmp_t3_reply,3, 0, packet);
                 
                 /* Initialize ip reply header */
                 struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *)malloc(sizeof(sr_ip_hdr_t));
@@ -500,9 +535,9 @@ struct sr_if* find_tip_in_router(struct sr_instance *sr, uint32_t tip)
 }
 
 
-void sr_fill_icmp_t3_reply(sr_icmp_t3_hdr_t *icmp_t3_reply, int code, uint8_t *packet)
+void sr_fill_icmp_t3_reply(sr_icmp_t3_hdr_t *icmp_t3_reply,int type,  int code, uint8_t *packet)
 {
-    icmp_t3_reply->icmp_type = 3;
+    icmp_t3_reply->icmp_type = type;
     icmp_t3_reply->icmp_code = code;
     icmp_t3_reply->icmp_sum = 0;
     icmp_t3_reply->unused = 0;
