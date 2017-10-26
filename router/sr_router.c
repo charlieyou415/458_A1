@@ -441,11 +441,17 @@ void sr_handlepacket(struct sr_instance* sr,
                 
 
                 /* Define a new reply_packet (since size might be diff) */
-                uint8_t * reply_packet = (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));
+                /*uint8_t * reply_packet = (uint8_t *) malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t));*/
+
+
+                uint8_t * reply_packet = (uint8_t *) malloc(len * sizeof(uint8_t));
                 memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
                 memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), ip_reply, sizeof(sr_ip_hdr_t));
                 memcpy(reply_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t), icmp_t3_reply, sizeof(sr_icmp_t3_hdr_t));
-                sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), interface);
+                /*sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), interface);*/
+
+
+                sr_send_packet(sr, reply_packet, len, interface);
                 printf("Sent out below: \n");
                 print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) +sizeof(sr_icmp_t3_hdr_t));
                 free(ether_reply);
@@ -553,7 +559,7 @@ void sr_fill_icmp_t3_reply(sr_icmp_t3_hdr_t *icmp_t3_reply,int type,  int code, 
     icmp_t3_reply->icmp_sum = 0;
     icmp_t3_reply->unused = 0;
     icmp_t3_reply->next_mtu = 0;
-    memcpy(icmp_t3_reply->data, packet + sizeof(sr_ethernet_hdr_t), ICMP_DATA_SIZE);
+    memcpy(icmp_t3_reply->data, (packet + sizeof(sr_ethernet_hdr_t)), ICMP_DATA_SIZE);
     icmp_t3_reply->icmp_sum = cksum(icmp_t3_reply, sizeof(sr_icmp_t3_hdr_t));
 }
 
