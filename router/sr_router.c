@@ -99,6 +99,8 @@ void sr_handlepacket(struct sr_instance* sr,
     /* Initialize ethernet header */
     sr_ethernet_hdr_t *ether_hdr = (sr_ethernet_hdr_t *) packet;
 
+    sr_print_routing_table(sr);
+
 
     /* Determine the type of frame */
     if (ether_type == ethertype_arp){
@@ -189,10 +191,11 @@ void sr_handlepacket(struct sr_instance* sr,
                 while (pkts)
                 {
                     struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *) pkts->buf;
-                    
-                    struct sr_rt * outgoing_rt = find_rt_by_ip(sr, req->ip);
-                    assert(outgoing_rt); 
-                    struct sr_if * outgoing_if = sr_get_interface(sr, outgoing_rt->interface);
+                    print_addr_ip_int(req->ip); 
+                   /* struct sr_rt * outgoing_rt = find_rt_by_ip(sr, req->ip);
+                    assert(outgoing_rt);
+                   */
+                    struct sr_if * outgoing_if = sr_get_interface(sr, pkts->iface);
                     assert(outgoing_if);
                     
                     printf("outgoing_if name: %s \n", outgoing_if->name);
@@ -251,7 +254,11 @@ void sr_handlepacket(struct sr_instance* sr,
                 if((icmp_hdr->icmp_type == 8) && (icmp_hdr->icmp_code == 0))
                     /* If it's an ICMP Req message, construct a reply */
                 {
+                    
 
+                    print_addr_ip_int(ip_hdr->ip_src);
+
+                    sr_print_routing_table(sr);
                     struct sr_rt * lpm_match = longest_prefix_match(sr, ip_hdr->ip_src);
                     if (lpm_match)
                     {
@@ -319,7 +326,11 @@ void sr_handlepacket(struct sr_instance* sr,
                             icmp_hdr->icmp_sum = 0;
                             icmp_hdr->icmp_sum = cksum(icmp_hdr, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
                             print_addr_ip_int(original_src_ip);
-                            struct sr_arpreq * req = sr_arpcache_queuereq(&(sr->cache), original_src_ip, packet, len, interface);
+
+                            free(reply_packet);
+
+                            sr_print_routing_table(sr);
+                            struct sr_arpreq * req = sr_arpcache_queuereq(&(sr->cache), original_src_ip, packet, len, lpm_match->interface);
                             handle_arpreq(sr, req);
 
                         }
@@ -458,7 +469,7 @@ void sr_handlepacket(struct sr_instance* sr,
                 } else {
                     printf("Entry does not exist\n");
                 /* If ip->mac mapping d.n.e. then add to request */
-                    struct sr_arpreq * req = sr_arpcache_queuereq(&(sr->cache), lpm_match->gw.s_addr, packet, len, interface);
+                    struct sr_arpreq * req = sr_arpcache_queuereq(&(sr->cache), lpm_match->gw.s_addr, packet, len, lpm_match->interface);
                     handle_arpreq(sr, req);
 
 
@@ -531,6 +542,8 @@ struct sr_rt * find_rt_by_ip(struct sr_instance *sr, uint32_t ip)
     rt_walker = sr->routing_table;
     while(rt_walker)
     {
+        print_addr_ip_int(rt_walker->dest.s_addr);
+        print_addr_ip_int(ip);
         if(rt_walker->dest.s_addr == ip)
         {
             return rt_walker;
@@ -577,6 +590,8 @@ struct sr_rt * longest_prefix_match(struct sr_instance *sr, uint32_t ip_dst)
         rt_walker = rt_walker->next;
 
     }
+    sr_print_routing_table(sr);
+
     return matched_rt;
 
 

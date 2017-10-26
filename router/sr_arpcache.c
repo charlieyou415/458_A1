@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <string.h>
+#include <assert.h>
 #include "sr_arpcache.h"
 #include "sr_router.h"
 #include "sr_if.h"
@@ -86,18 +87,39 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
             struct sr_rt* rt_walker = 0;
             char * if_name = (char *) malloc(sr_IFACE_NAMELEN * sizeof(char));
             rt_walker = sr->routing_table;
+            print_addr_ip_int(req->ip);
+           
+            if (rt_walker == 0)
+            {
+                printf("rt_walker is zero!\n");
+                return;
+                                                                                    
+            }
+            printf("Before rt_walker \n");
+            sr_print_routing_table(sr);
+
             while(rt_walker)
             {
+                printf("In rt walker\n");
                 if (rt_walker->gw.s_addr == req->ip)
                 {
                     memcpy(if_name, rt_walker->interface, sr_IFACE_NAMELEN);
+                    printf("Found IF name\n");
+                    break;
                 
                 }
                 rt_walker = rt_walker->next;
             }
+
+            printf("After rt_walker \n");
+            sr_print_routing_table(sr);
+            
+            printf("if_name: %s \n", if_name);
             
             struct sr_if * target_if = sr_get_interface(sr, if_name);
-            
+           
+            assert(target_if);
+
             struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *)malloc(sizeof(sr_ethernet_hdr_t));
 
             sr_fill_ether_req_arp(ether_reply, target_if);
@@ -109,14 +131,18 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
             memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
             memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), arp_req, sizeof(sr_arp_hdr_t));
 
+            printf("send arp req target_if->name %s \n", target_if->name);
+
             sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), target_if->name);
+            
+            
             printf("Sent out below ARP req: \n");
             print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
             free(ether_reply);
             free(arp_req);
             free(reply_packet);
             free(if_name);
-            free(rt_walker);
+            /*free(rt_walker);*/
             
             req->sent = time(NULL);
             req->times_sent++;
