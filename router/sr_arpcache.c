@@ -15,7 +15,7 @@
 
 void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
 {
-    if(difftime(time(NULL), req->sent) > 1.0)
+    if(difftime(time(NULL), req->sent) >= 0.9)
     {
         if(req->times_sent >= 5)
         {
