@@ -175,11 +175,11 @@ void sr_handlepacket(struct sr_instance* sr,
         } else if (ar_op == arp_op_reply){
             printf("ARP Reply \n");
             /* Insert the IP->Mac provided by the arp packet to cache */
-            unsigned char * mac = (unsigned char *) malloc(ETHER_ADDR_LEN * sizeof(unsigned char));
+            /*unsigned char * mac = (unsigned char *) malloc(ETHER_ADDR_LEN * sizeof(unsigned char));
             memcpy(mac, arp_hdr->ar_sha, ETHER_ADDR_LEN);
             uint32_t ip = arp_hdr->ar_sip;
-            
-            struct sr_arpreq * req = sr_arpcache_insert(&(sr->cache), mac, ip); 
+            */
+            struct sr_arpreq * req = sr_arpcache_insert(&(sr->cache), arp_hdr->ar_sha, arp_hdr->ar_sip); 
             
             /* If a req with this IP/Mac already exist, send outstanding packets */
             if (req)
@@ -198,7 +198,7 @@ void sr_handlepacket(struct sr_instance* sr,
                     printf("outgoing_if name: %s \n", outgoing_if->name);
                     printf("pkts->iface %s \n", pkts->iface);
 
-                    memcpy(ether_reply->ether_dhost, mac, ETHER_ADDR_LEN);
+                    memcpy(ether_reply->ether_dhost, arp_hdr->ar_sha, ETHER_ADDR_LEN);
                     memcpy(ether_reply->ether_shost, outgoing_if->addr, ETHER_ADDR_LEN);
 
 
@@ -213,8 +213,9 @@ void sr_handlepacket(struct sr_instance* sr,
                 
                     pkts = pkts->next;
                 }
+                sr_arpreq_destroy(&(sr->cache), req); 
             }
-            free(mac);
+            /*free(mac);*/
             
         }
 
