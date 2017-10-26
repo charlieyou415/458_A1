@@ -250,6 +250,7 @@ void sr_handlepacket(struct sr_instance* sr,
                 if((icmp_hdr->icmp_type == 8) && (icmp_hdr->icmp_code == 0))
                     /* If it's an ICMP Req message, construct a reply */
                 {
+<<<<<<< HEAD
 
                     struct sr_rt * lpm_match = longest_prefix_match(sr, ip_hdr->ip_src);
                     if (lpm_match)
@@ -327,6 +328,35 @@ void sr_handlepacket(struct sr_instance* sr,
                         printf("LPM not matched! Dropping\n");
                         return;    
                     }
+=======
+                    printf("ICMP Req\n");
+                    /* Create a new ethernet header */
+                    struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *)malloc(sizeof(sr_ethernet_hdr_t));
+                    /* Create a new ip header */
+                    struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *) malloc(sizeof(sr_ip_hdr_t));
+                    /* Create a new icmp header */
+                    struct sr_icmp_hdr * icmp_reply = (struct sr_icmp_hdr *) malloc(len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
+                    sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
+                    sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_hdr->ip_p, len - sizeof(sr_ethernet_hdr_t));
+                    sr_fill_icmp_echo_reply(icmp_hdr, icmp_reply, len);
+                    /* Combine ethernet + ip + icmp headers */
+                    memcpy(reply_packet, packet, len);
+                    memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
+                    memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), ip_reply, sizeof(sr_ip_hdr_t));
+                    memcpy(reply_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t), icmp_reply, sizeof(sr_icmp_hdr_t));
+
+
+                    printf("target_if->name: %s \n", target_if->name);
+                    printf("outgoing if (interface): %s \n", interface);
+
+                    sr_send_packet(sr, reply_packet, len, interface);
+                    printf("Sent out below: \n");
+                    print_hdrs(reply_packet, len);
+                    free(ether_reply);
+                    free(ip_reply);
+                    free(icmp_reply);
+                    free(reply_packet);
+>>>>>>> parent of 3e67537... no change
 
                 }
             } else if (ip_proto == 6 || ip_proto == 17){
