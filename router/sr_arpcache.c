@@ -24,14 +24,22 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
 
             while(pkts)
             {
+                
+                
                 /* Loop through all packets and send ICMP host unreachable */
                 uint8_t * packet = pkts->buf;
+                
+                struct sr_if * outgoing_if = sr_get_interface(sr, pkts->iface);
+                
                 /* Initialize current ether, ip header */
                 struct sr_ethernet_hdr * ether_hdr = (sr_ethernet_hdr_t *)(packet);
                 struct sr_ip_hdr * ip_hdr = (sr_ip_hdr_t *)(packet + sizeof(sr_ethernet_hdr_t));
                 /*Create reply headers */
                 struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *)malloc(sizeof(sr_ethernet_hdr_t));
-                sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
+                /*sr_fill_ether_hdr_reply(ether_hdr, ether_reply);*/
+
+                sr_fill_ether_reply_arp(ether_hdr, ether_reply, outgoing_if);
+                ether_reply->ether_type = htons(ethertype_ip);
 
                 struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *)malloc(sizeof(sr_ip_hdr_t));
                 sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_protocol_icmp, pkts->len - sizeof(sr_ethernet_hdr_t));
