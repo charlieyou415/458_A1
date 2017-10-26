@@ -259,7 +259,7 @@ void sr_handlepacket(struct sr_instance* sr,
                         printf("LPM Matched \n");
                         printf("ICMP Req\n");
 
-                        struct sr_arpentry * entry = sr_arpcache_queuereq_lookup(&(sr->cache), ip_hdr->ip_src);
+                        struct sr_arpentry * entry = sr_arpcache_lookup(&(sr->cache), ip_hdr->ip_src);
 
                         if (entry)
                         /* Entry exists, send */
@@ -288,9 +288,9 @@ void sr_handlepacket(struct sr_instance* sr,
 
                             printf("target_if->name: %s \n", target_if->name);
                             printf("outgoing if (interface): %s \n", interface);
-                            printf("lpm_match->iface: %s \n", lpm_match->iface);
+                            printf("lpm_match->iface: %s \n", lpm_match->interface);
 
-                            sr_send_packet(sr, reply_packet, len, lpm_match->iface);
+                            sr_send_packet(sr, reply_packet, len, lpm_match->interface);
                             printf("Sent out below: \n");
                             print_hdrs(reply_packet, len);
                             free(ether_reply);
