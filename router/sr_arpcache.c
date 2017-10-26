@@ -51,7 +51,7 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
                 print_addr_ip_int(ip_reply->ip_dst);
                 printf("Outgoing interface: %s \n", pkts->iface);
 
-                sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), outgoing_rt->interface);
+                sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) + sizeof(sr_icmp_t3_hdr_t), pkts->iface);
 
                 printf("Sent out below: \n");
                 print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t) +sizeof(sr_icmp_t3_hdr_t));
