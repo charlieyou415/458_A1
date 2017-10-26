@@ -404,7 +404,7 @@ void sr_handlepacket(struct sr_instance* sr,
                 } else {
                     printf("Entry does not exist\n");
                 /* If ip->mac mapping d.n.e. then add to request */
-                    struct sr_arpreq * req = sr_arpcache_queuereq(&(sr->cache), lpm_match->gw.s_addr, packet, len, lpm_match->interface);
+                    struct sr_arpreq * req = sr_arpcache_queuereq(&(sr->cache), lpm_match->gw.s_addr, packet, len, interface);
                     handle_arpreq(sr, req);
 
 
