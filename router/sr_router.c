@@ -189,7 +189,11 @@ void sr_handlepacket(struct sr_instance* sr,
                 while (pkts)
                 {
                     struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *) pkts->buf;
-                    struct sr_if * outgoing_if = sr_get_interface(sr, pkts->iface);
+                    
+                    struct sr_rt * outgoing_rt = find_rt_by_ip(sr, req->ip);
+                    
+                    struct sr_if * outgoing_if = sr_get_interface(sr, outgoing_rt->interface);
+                    
                     
                     printf("outgoing_if name: %s \n", outgoing_if->name);
                     printf("pkts->iface %s \n", pkts->iface);
@@ -200,7 +204,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
 
 
-                    sr_send_packet(sr, pkts->buf, pkts->len, pkts->iface);
+                    sr_send_packet(sr, pkts->buf, pkts->len, outgoing_if->name);
 
                     printf("Sent out below:\n");
                     print_hdrs(pkts->buf, pkts->len);
