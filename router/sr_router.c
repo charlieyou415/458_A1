@@ -317,7 +317,7 @@ void sr_handlepacket(struct sr_instance* sr,
                             icmp_hdr->icmp_code = 0;
                             icmp_hdr->icmp_sum = 0;
                             icmp_hdr->icmp_sum = cksum(icmp_hdr, len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
-
+                            print_addr_ip_int(original_src_ip);
                             struct sr_arpreq * req = sr_arpcache_queuereq(&(sr->cache), original_src_ip, packet, len, interface);
                             handle_arpreq(sr, req);
 
