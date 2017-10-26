@@ -299,7 +299,7 @@ void sr_handlepacket(struct sr_instance* sr,
                             free(reply_packet);
                         } else {
                             /* Entry does not exist, queue for ARP req */
-
+                            printf("Entry does not exist, queue for ARP req \n");
                             /* Update IP hdr */
                             uint32_t original_src_ip = ip_hdr->ip_src;
                             ip_hdr->ip_src = ip_hdr->ip_dst;
