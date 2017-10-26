@@ -297,6 +297,7 @@ void sr_handlepacket(struct sr_instance* sr,
                             free(ip_reply);
                             free(icmp_reply);
                             free(reply_packet);
+                            free(entry);
                         } else {
                             /* Entry does not exist, queue for ARP req */
                             printf("Entry does not exist, queue for ARP req \n");

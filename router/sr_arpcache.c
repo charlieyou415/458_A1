@@ -108,8 +108,7 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
             uint8_t * reply_packet = (uint8_t *)malloc(sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
             memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
             memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), arp_req, sizeof(sr_arp_hdr_t));
-            print_addr_ip_int(req->ip);
-            printf("In handlearp, target_if->name: %s \n", target_if->name);
+
             sr_send_packet(sr, reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t), target_if->name);
             printf("Sent out below ARP req: \n");
             print_hdrs(reply_packet, sizeof(sr_ethernet_hdr_t) + sizeof(sr_arp_hdr_t));
@@ -117,6 +116,7 @@ void handle_arpreq(struct sr_instance * sr, struct sr_arpreq * req)
             free(arp_req);
             free(reply_packet);
             free(if_name);
+            free(rt_walker);
             
             req->sent = time(NULL);
             req->times_sent++;
