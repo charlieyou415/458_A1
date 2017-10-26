@@ -251,21 +251,21 @@ void sr_handlepacket(struct sr_instance* sr,
                 if((icmp_hdr->icmp_type == 8) && (icmp_hdr->icmp_code == 0))
                     /* If it's an ICMP Req message, construct a reply */
                 {
-                    printf("ICMP Req\n");
-                    /* Create a new ethernet header */
-                    struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *)malloc(sizeof(sr_ethernet_hdr_t));
-                    /* Create a new ip header */
-                    struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *) malloc(sizeof(sr_ip_hdr_t));
-                    /* Create a new icmp header */
-                    struct sr_icmp_hdr * icmp_reply = (struct sr_icmp_hdr *) malloc(len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
-                    sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
-                    sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_hdr->ip_p, len - sizeof(sr_ethernet_hdr_t));
-                    sr_fill_icmp_echo_reply(icmp_hdr, icmp_reply, len);
-                    /* Combine ethernet + ip + icmp headers */
-                    memcpy(reply_packet, packet, len);
-                    memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
-                    memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), ip_reply, sizeof(sr_ip_hdr_t));
-                    memcpy(reply_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t), icmp_reply, sizeof(sr_icmp_hdr_t));
+                        printf("ICMP Req\n");
+                        /* Create a new ethernet header */
+                        struct sr_ethernet_hdr * ether_reply = (sr_ethernet_hdr_t *)malloc(sizeof(sr_ethernet_hdr_t));
+                        /* Create a new ip header */
+                        struct sr_ip_hdr * ip_reply = (sr_ip_hdr_t *) malloc(sizeof(sr_ip_hdr_t));
+                        /* Create a new icmp header */
+                        struct sr_icmp_hdr * icmp_reply = (struct sr_icmp_hdr *) malloc(len - sizeof(sr_ethernet_hdr_t) - sizeof(sr_ip_hdr_t));
+                        sr_fill_ether_hdr_reply(ether_hdr, ether_reply);
+                        sr_fill_ip_hdr_reply(ip_hdr, ip_reply, ip_hdr->ip_p, len - sizeof(sr_ethernet_hdr_t));
+                        sr_fill_icmp_echo_reply(icmp_hdr, icmp_reply, len);
+                        /* Combine ethernet + ip + icmp headers */
+                        memcpy(reply_packet, packet, len);
+                        memcpy(reply_packet, ether_reply, sizeof(sr_ethernet_hdr_t));
+                        memcpy(reply_packet + sizeof(sr_ethernet_hdr_t), ip_reply, sizeof(sr_ip_hdr_t));
+                        memcpy(reply_packet + sizeof(sr_ethernet_hdr_t) + sizeof(sr_ip_hdr_t), icmp_reply, sizeof(sr_icmp_hdr_t));
 
 
                     printf("target_if->name: %s \n", target_if->name);
